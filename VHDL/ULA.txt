@@ -1,0 +1,67 @@
+library IEEE;
+use IEEE.std_logic_1164.all;
+use IEEE.std_logic_unsigned.all;
+
+entity ULA is
+	port(
+    	i_A  		: in  std_logic_vector(31 downto 0);
+        i_B  		: in  std_logic_vector(31 downto 0);
+        i_F3 		: in  std_logic_vector(2 downto 0);
+        i_INST30	: in  std_logic;
+        i_ALUOP     : in  std_logic_vector(1 downto 0); -- Novo sinal de controle.
+        o_ZERO		: out std_logic;
+        o_ULA  		: out std_logic_vector(31 downto 0)
+    );
+end ULA;
+
+architecture a1 of ULA is
+    signal w_result : std_logic_vector(31 downto 0);
+begin
+	process(i_A, i_B, i_F3, i_INST30, i_ALUOP)
+    begin
+        -- O comportamento da ULA agora depende do i_ALUOP.
+        case i_ALUOP is
+            -- Caso "00": Operação Tipo-R. Usa i_F3 para definir a operação.
+            when "00" => 
+                case i_F3 is
+                    -- ADD/SUB
+                    when "000" => 
+                        if (i_INST30 = '0') then
+                            w_result <= i_A + i_B;
+                        else
+                            w_result <= i_A - i_B;
+                        end if;
+                    -- XOR
+                    when "100" =>
+                        w_result <= i_A xor i_B;
+                    -- OR (Adicionado conforme solicitado [cite: 53])
+                    when "110" =>
+                        w_result <= i_A or i_B;
+                    -- AND (Adicionado conforme solicitado [cite: 53])
+                    when "111" =>
+                        w_result <= i_A and i_B;
+                    -- Outras operações não implementadas
+                    when others =>
+                        w_result <= (others => 'X');
+                end case;
+            
+            -- Caso "10": Operação Imediata (ex: ADDI). A ULA apenas soma.
+            when "10" =>
+                w_result <= i_A + i_B;
+
+            -- Caso "11": Operação Load/Store. A ULA calcula o endereço somando.
+            when "11" =>
+                w_result <= i_A + i_B;
+                
+            -- Outros casos
+            when others =>
+                w_result <= (others => 'X');
+
+        end case;
+    end process;
+
+    o_ULA <= w_result;
+    -- A saída ZERO não foi solicitada para ser conectada, mas é uma boa prática mantê-la.
+    o_ZERO <= '1' when w_result = X"00000000" else '0';
+    
+end a1;
